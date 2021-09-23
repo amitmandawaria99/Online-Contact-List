@@ -35,7 +35,7 @@ body{
   padding-right: 30%;
 }
 
-.contact .delete-button{
+.contact .delete-button, .update-button{
   width: 10%;
   padding: 3px;
   text-align: center;
@@ -43,12 +43,12 @@ body{
   font-size: 1.8em;
 }
 
-.contact .delete-button a{
+.contact .delete-button a, .update-button a{
   color: white;
   width: 10px;
   height: 10px;
 }
-/contact p{
+contact p{
   margin: 5px 0;
 }
 

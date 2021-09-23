@@ -1,37 +1,29 @@
 const express = require('express');
+const app = express();
 const path = require('path');
 const port = 8000;
-
+const cookieParser = require('cookie-parser');
+const expressLayouts = require('express-ejs-layouts');
 
 
 //requring the mongodb file just befor express server fire up
 const db = require('./config/mongoose');
 const Contact = require('./models/contact');
+const session = require('express-session');
+const passport = require('passport');
+const passportlocal = require('./config/passport-local-strategy');
+const MongoStore = require('connect-mongo');
 
 
-const app = express();
+app.use(express.urlencoded());
+app.use(cookieParser());
+app.use(express.static('./assets'));
+app.use(expressLayouts);
 
-
+app.set('layout extractStyles', true);
+app.set('layout extractScripts', true);
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
-//middleware
-
-
-app.use(express.urlencoded());   //parser,middleware (called before every controller and take req,res all values)
-app.use(express.static('assets'));   //if you need any static file(relative links) then search in assets folder
-
-//middleware1 executes from top to bottom
-// app.use(function (req, res, next) {
-//   req.myname = "amit";
-//   console.log("mw1");
-//   next();
-// });
-//middleware2 can be used after controllers
-// app.use(function (req, res, next) {
-//   console.log("mw2 ", req.myname);
-//   next();
-// });
-
+app.set('views', './views');
 
 
 var contactList = [
@@ -49,65 +41,32 @@ var contactList = [
   }
 ];
 
-
-
-//controller
-app.get('/', function (req, res) {
-  Contact.find({}, function (err, contacts) {
-    if (err) {
-      console.log('Error in fetching contact from database');
-      return;
+//mongo store is used to store the session cookie in the db
+app.use(session({
+  name: 'codeial',
+  //TODO change the secret before deployment in production mode
+  secret: 'blahsomething',
+  saveUninitialized: false,
+  resave: false,
+  cookie: {
+    maxAge: (1000 * 60 * 100)
+  },
+  store: MongoStore.create({
+    mongoUrl: 'mongodb://localhost/contacts_list_db',
+    autoRemove: 'disabled'
+  },
+    function (err) {
+      console.log(err || 'connect-mongodb setup ok');
     }
-    return res.render('home.ejs', {
-      title: 'Contact List',
-      contact_list: contacts
-    });
-  });
-});
-//controller
-app.get('/practice', function (req, res) {
-  return res.render('practice.ejs', {
-    title: "practice"
-  });
-});
-//controller
-app.post('/create-contact', function (req, res) {
-  // contactList.push({
-  //   name: req.body.name,
-  //   phone: req.body.phone
-  // });
-  // contactList.push(req.body);    //before reaches this part middleware manipulated data from browser
-  Contact.create({
-    name: req.body.name,
-    phone: req.body.phone
-  }, function (err, newContact) {
-    if (err) { console.log('error in creating new contact'); return; }
+  )
+}));
+app.use(passport.initialize());
+app.use(passport.session());
 
-    console.log('*********', newContact);
-    return res.redirect('back');
-  });
-  // return res.redirect('back');
-});
+app.use(passport.setAuthenticatedUser);
 
-
-
-//for deleting an contact
-//uses query param as maximum times uses
-app.get('/delete-contact', function (req, res) {
-  //get the id from query in the url
-  let id = req.query.id;
-
-  //find the contact in the database using id and delete
-  Contact.findByIdAndUpdate
-  Contact.findByIdAndDelete(id, function (err) {
-    if (err) {
-      console.log('Error in deleting an object form database');
-      return;
-    }
-    return res.redirect('back');
-  });
-});
-
+// use express router(must be here)
+app.use('/', require('./routes'));
 
 app.listen(port, function (err) {
   if (err) { console.log('error in server') };
